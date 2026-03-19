@@ -1,5 +1,3 @@
-`include "defines.v"
-
 // 时间单位是 1ns，精度是 1ps
 `timescale 1ns/1ps
 

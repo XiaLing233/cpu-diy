@@ -10,22 +10,70 @@
 `define AluSelBus                   2:0                     // 译码阶段的输出 alusel_o 的宽度
 `define InstValid                   1'b0                    // 指令有效
 `define InstInvalid                 1'b1                    // 指令无效
+`define Stop                        1'b1
+`define NoStop                      1'b0
+`define InDelaySlot                 1'b1
+`define NotInDelaySlot              1'b0
+`define Branch                      1'b1
+`define NotBranch                   1'b0
+`define InterruptAssert             1'b1
+`define InterruptNotAssert          1'b0
+`define TrapAssert                  1'b1
+`define TrapNotAssert               1'b0
 `define True_v                      1'b1                    // 逻辑"真"
 `define False_v                     1'b0                    // 逻辑"假"
 `define ChipEnable                  1'b1                    // 芯片使能
 `define ChipDisable                 1'b0                    // 芯片禁止
 
 // 与具体指令有关的宏定义
-`define EXE_ORI                     6'b001101               // 指令 ori 的指令码
-`define EXE_NOP                     6'b000000
+`define EXE_AND                     6'b100100               // and
+`define EXE_OR                      6'b100101               // or
+`define EXE_XOR                     6'b100110               // xor
+`define EXE_NOR                     6'b100111               // nor
+`define EXE_ANDI                    6'b001100               // andi
+`define EXE_ORI                     6'b001101               // ori
+`define EXE_XORI                    6'b001110               // xori
+`define EXE_LUI                     6'b001111               // lui
 
+`define EXE_SLL                     6'b000000               // sll
+`define EXE_SLLV                    6'b000100               // sllv
+`define EXE_SRL                     6'b000010               // srl
+`define EXE_SRLV                    6'b000110               // srlv
+`define EXE_SRA                     6'b000011               // sra
+`define EXE_SRAV                    6'b000111               // srav
+
+`define EXE_SYNC                    6'b001111               // sync
+`define EXE_PREF                    6'b110011               // pref
+`define EXE_SPECIAL_INST            6'b000000               // SPECIAL 类指令的指令码
+`define EXE_REGIMM_INST             6'b000001
+`define EXE_SPECIAL2_INST           6'b011100
+
+`define EXE_NOP                     6'b000000               // nop
+`define SSNOP                       32'b00000000000000000000000001000000
 
 // AluOp
+`define EXE_AND_OP                  8'b00100100
 `define EXE_OR_OP                   8'b00100101
+`define EXE_XOR_OP                  8'b00100110
+`define EXE_NOR_OP                  8'b00100111
+`define EXE_ANDI_OP                 8'b01011001
+`define EXE_ORI_OP                  8'b01011010
+`define EXE_XORI_OP                 8'b01011011
+`define EXE_LUI_OP                  8'b01011100
+
+`define EXE_SLL_OP                  8'b01111100
+`define EXE_SLLV_OP                 8'b00000100
+`define EXE_SRL_OP                  8'b00000010
+`define EXE_SRLV_OP                 8'b00000110
+`define EXE_SRA_OP                  8'b00000011
+`define EXE_SRAV_OP                 8'b00000111
+
 `define EXE_NOP_OP                  8'b00000000
+
 
 // AluSel
 `define EXE_RES_LOGIC               3'b001
+`define EXE_RES_SHIFT               3'b010
 
 `define EXE_RES_NOP                 3'b000
 
