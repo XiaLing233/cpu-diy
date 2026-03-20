@@ -29,7 +29,9 @@ module id (
     output  reg[`RegBus]            reg1_o,
     output  reg[`RegBus]            reg2_o,
     output  reg[`RegAddrBus]        wd_o,
-    output  reg                     wreg_o
+    output  reg                     wreg_o,
+
+    output  wire                    stallreq
 );
     
     // 取得指令的指令码，功能码
@@ -43,6 +45,8 @@ module id (
 
     // 指示指令是否有效
     reg instvalid;
+
+    assign stallreq = `NoStop;
 
     // 第一段：对指令进行译码
     always @(*) begin
@@ -202,6 +206,82 @@ module id (
                                         wreg_o  <=  `WriteDisable;
                                     end
                                 end
+                                `EXE_SLT: begin     // slt 指令
+                                    wreg_o      <=  `WriteEnable;
+                                    aluop_o     <=  `EXE_SLT_OP;
+                                    alusel_o    <=  `EXE_RES_ARITHMETIC;
+                                    reg1_read_o <=  1'b1;
+                                    reg2_read_o <=  1'b1;
+                                    instvalid   <=  `InstValid;
+                                end
+                                `EXE_SLTU: begin    // sltu 指令
+                                    wreg_o      <=  `WriteEnable;
+                                    aluop_o     <=  `EXE_SLTU_OP;
+                                    alusel_o    <=  `EXE_RES_ARITHMETIC;
+                                    reg1_read_o <=  1'b1;
+                                    reg2_read_o <=  1'b1;
+                                    instvalid   <=  `InstValid;
+                                end
+                                `EXE_ADD: begin     // add 指令
+                                    wreg_o      <=  `WriteEnable;
+                                    aluop_o     <=  `EXE_ADD_OP;
+                                    alusel_o    <=  `EXE_RES_ARITHMETIC;
+                                    reg1_read_o <=  1'b1;
+                                    reg2_read_o <=  1'b1;
+                                    instvalid   <=  `InstValid;
+                                end
+                                `EXE_ADDU: begin    // addu 指令
+                                    wreg_o      <=  `WriteEnable;
+                                    aluop_o     <=  `EXE_ADDU_OP;
+                                    alusel_o    <=  `EXE_RES_ARITHMETIC;
+                                    reg1_read_o <=  1'b1;
+                                    reg2_read_o <=  1'b1;
+                                    instvalid   <=  `InstValid;
+                                end
+                                `EXE_SUB: begin     // sub 指令
+                                    wreg_o      <=  `WriteEnable;
+                                    aluop_o     <=  `EXE_SUB_OP;
+                                    alusel_o    <=  `EXE_RES_ARITHMETIC;
+                                    reg1_read_o <=  1'b1;
+                                    reg2_read_o <=  1'b1;
+                                    instvalid   <=  `InstValid;
+                                end
+                                `EXE_SUBU: begin    // subu 指令
+                                    wreg_o      <=  `WriteEnable;
+                                    aluop_o     <=  `EXE_SUBU_OP;
+                                    alusel_o    <=  `EXE_RES_ARITHMETIC;
+                                    reg1_read_o <=  1'b1;
+                                    reg2_read_o <=  1'b1;
+                                    instvalid   <=  `InstValid;
+                                end
+                                `EXE_MULT: begin    // mult 指令
+                                    wreg_o      <=  `WriteDisable;
+                                    aluop_o     <=  `EXE_MULT_OP;
+                                    reg1_read_o <=  1'b1;
+                                    reg2_read_o <=  1'b1;
+                                    instvalid   <=  `InstValid;
+                                end
+                                `EXE_MULTU: begin   // multu 指令
+                                    wreg_o      <=  `WriteDisable;
+                                    aluop_o     <=  `EXE_MULTU_OP;
+                                    reg1_read_o <=  1'b1;
+                                    reg2_read_o <=  1'b1;
+                                    instvalid   <=  `InstValid;
+                                end
+                                `EXE_DIV: begin     // div 指令
+                                    wreg_o      <=  `WriteDisable;
+                                    aluop_o     <=  `EXE_DIV_OP;
+                                    reg1_read_o <=  1'b1;
+                                    reg2_read_o <=  1'b1;
+                                    instvalid   <=  `InstValid;
+                                end
+                                `EXE_DIVU: begin    // divu 指令
+                                    wreg_o      <=  `WriteDisable;
+                                    aluop_o     <=  `EXE_DIVU_OP;
+                                    reg1_read_o <=  1'b1;
+                                    reg2_read_o <=  1'b1;
+                                    instvalid   <=  `InstValid;
+                                end
                                 default: begin
                                     // 其他 SPECIAL 指令 => 无效
                                 end
@@ -259,6 +339,109 @@ module id (
                     reg1_read_o <=  1'b0;
                     reg2_read_o <=  1'b0;
                     instvalid   <=  `InstValid;
+                end
+                `EXE_SLTI: begin                    // slti 指令
+                    wreg_o      <=  `WriteEnable;
+                    aluop_o     <=  `EXE_SLT_OP;
+                    alusel_o    <=  `EXE_RES_ARITHMETIC;
+                    reg1_read_o <=  1'b1;
+                    reg2_read_o <=  1'b0;
+                    imm         <=  {{16{inst_i[15]}}, inst_i[15:0]};
+                    wd_o        <=  inst_i[20:16];
+                    instvalid   <=  `InstValid;
+                end
+                `EXE_SLTIU: begin                   // sltiu 指令
+                    wreg_o      <=  `WriteEnable;
+                    aluop_o     <=  `EXE_SLTU_OP;
+                    alusel_o    <=  `EXE_RES_ARITHMETIC;
+                    reg1_read_o <=  1'b1;
+                    reg2_read_o <=  1'b0;
+                    imm         <=  {{16{inst_i[15]}}, inst_i[15:0]};
+                    wd_o        <=  inst_i[20:16];
+                    instvalid   <=  `InstValid;
+                end
+                `EXE_ADDI: begin                    // addi 指令
+                    wreg_o      <=  `WriteEnable;
+                    aluop_o     <=  `EXE_ADDI_OP;
+                    alusel_o    <=  `EXE_RES_ARITHMETIC;
+                    reg1_read_o <=  1'b1;
+                    reg2_read_o <=  1'b0;
+                    imm         <=  {{16{inst_i[15]}}, inst_i[15:0]};
+                    wd_o        <=  inst_i[20:16];
+                    instvalid   <=  `InstValid;
+                end
+                `EXE_ADDIU: begin                   // addiu 指令
+                    wreg_o      <=  `WriteEnable;
+                    aluop_o     <=  `EXE_ADDIU_OP;
+                    alusel_o    <=  `EXE_RES_ARITHMETIC;
+                    reg1_read_o <=  1'b1;
+                    reg2_read_o <=  1'b0;
+                    imm         <=  {{16{inst_i[15]}}, inst_i[15:0]};
+                    wd_o        <=  inst_i[20:16];
+                    instvalid   <=  `InstValid;
+                end
+                `EXE_SPECIAL2_INST: begin           // op 等于 SPECIAL2
+                    case (op3)
+                        `EXE_CLZ: begin             // clz 指令
+                            wreg_o      <=  `WriteEnable;
+                            aluop_o     <=  `EXE_CLZ_OP;
+                            alusel_o    <=  `EXE_RES_ARITHMETIC;
+                            reg1_read_o <=  1'b1;
+                            reg2_read_o <=  1'b0;
+                            instvalid   <=  `InstValid;
+                        end
+                        `EXE_CLO: begin             // clo 指令
+                            wreg_o      <=  `WriteEnable;
+                            aluop_o     <=  `EXE_CLO_OP;
+                            alusel_o    <=  `EXE_RES_ARITHMETIC;
+                            reg1_read_o <=  1'b1;
+                            reg2_read_o <=  1'b0;
+                            instvalid   <=  `InstValid;
+                        end
+                        `EXE_MUL: begin             // mul 指令
+                            wreg_o      <=  `WriteEnable;
+                            aluop_o     <=  `EXE_MUL_OP;
+                            alusel_o    <=  `EXE_RES_MUL;
+                            reg1_read_o <=  1'b1;
+                            reg2_read_o <=  1'b1;
+                            instvalid   <=  `InstValid;
+                        end
+                        `EXE_MADD: begin            // madd 指令
+                            wreg_o      <=  `WriteDisable;
+                            aluop_o     <=  `EXE_MADD_OP;
+                            alusel_o    <=  `EXE_RES_MUL;
+                            reg1_read_o <=  1'b1;
+                            reg2_read_o <=  1'b1;
+                            instvalid   <=  `InstValid;
+                        end
+                        `EXE_MADDU: begin           // maddu 指令
+                            wreg_o      <=  `WriteDisable;
+                            aluop_o     <=  `EXE_MADDU_OP;
+                            alusel_o    <=  `EXE_RES_MUL;
+                            reg1_read_o <=  1'b1;
+                            reg2_read_o <=  1'b1;
+                            instvalid   <=  `InstValid;
+                        end
+                        `EXE_MSUB: begin            // msub 指令
+                            wreg_o      <=  `WriteDisable;
+                            aluop_o     <=  `EXE_MSUB_OP;
+                            alusel_o    <=  `EXE_RES_MUL;
+                            reg1_read_o <=  1'b1;
+                            reg2_read_o <=  1'b1;
+                            instvalid   <=  `InstValid;
+                        end
+                        `EXE_MSUBU: begin           // msubu 指令
+                            wreg_o      <=  `WriteDisable;
+                            aluop_o     <=  `EXE_MSUBU_OP;
+                            alusel_o    <=  `EXE_RES_MUL;
+                            reg1_read_o <=  1'b1;
+                            reg2_read_o <=  1'b1;
+                            instvalid   <=  `InstValid;
+                        end
+                        default: begin
+                            // other SPECIAL2_INST
+                        end
+                    endcase
                 end
                 default: begin
                     // 其他操作码

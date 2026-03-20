@@ -71,17 +71,44 @@ module openmips (
     wire[`RegBus]               hi;
     wire[`RegBus]               lo;
 
+    // 连接执行阶段与 ex_reg 模块，用于多周期的 MADD, MADDU, MSUB, MSUBU 指令
+    wire[`DoubleRegBus]         hilo_temp_o;
+    wire[1:0]                   cnt_o;
+
+    wire[`DoubleRegBus]         hilo_temp_i;
+    wire[1:0]                   cnt_i;
+
+    wire[`DoubleRegBus]         div_result;
+    wire                        div_ready;
+    wire[`RegBus]               div_opdata1;
+    wire[`RegBus]               div_opdata2;
+    wire                        div_start;
+    wire                        div_annul;
+    wire                        signed_div;
+
+    wire[5:0]                   stall;
+    wire                        stallreq_from_id;
+    wire                        stallreq_from_ex;
+
     // pc_reg 实例化
     pc_reg pc_reg0(
-        .clk(clk),  .rst(rst),  .pc(pc),    .ce(rom_ce_o)
+        .clk(clk),
+        .rst(rst),
+        .stall(stall),
+        .pc(pc),
+        .ce(rom_ce_o)
     );
 
     assign rom_addr_o = pc;         // 指令存储器的输入地址就是 pc 的值
 
     // IF/ID 模块实例化
     if_id if_id0(
-        .clk(clk),  .rst(rst),  .if_pc(pc),
-        .if_inst(rom_data_i),   .id_pc(id_pc_i),
+        .clk(clk),
+        .rst(rst),
+        .stall(stall),
+        .if_pc(pc),
+        .if_inst(rom_data_i),
+        .id_pc(id_pc_i),
         .id_inst(id_inst_i)
     );
 
@@ -109,7 +136,9 @@ module openmips (
         // 送到 ID/EX 模块的信息
         .aluop_o(id_aluop_o),       .alusel_o(id_alusel_o),
         .reg1_o(id_reg1_o),         .reg2_o(id_reg2_o),
-        .wd_o(id_wd_o),             .wreg_o(id_wreg_o)
+        .wd_o(id_wd_o),             .wreg_o(id_wreg_o),
+
+        .stallreq(stallreq_from_id)
     );
 
     // 通用寄存器 Regfile 模块实例化
@@ -125,6 +154,7 @@ module openmips (
     // ID/EX 模块实例化
     id_ex id_ex0(
         .clk(clk),                  .rst(rst),
+        .stall(stall),
 
         // 从译码阶段 ID 模块传递过来的信息
         .id_aluop(id_aluop_o),      .id_alusel(id_alusel_o),
@@ -142,34 +172,50 @@ module openmips (
         .rst(rst),
 
         // 从 ID/EX 模块传递过来的信息
-        .aluop_i(ex_aluop_i),       .alusel_i(ex_alusel_i),
-        .reg1_i(ex_reg1_i),         .reg2_i(ex_reg2_i),
-        .wd_i(ex_wd_i),             .wreg_i(ex_wreg_i),
+        .aluop_i(ex_aluop_i),           .alusel_i(ex_alusel_i),
+        .reg1_i(ex_reg1_i),             .reg2_i(ex_reg2_i),
+        .wd_i(ex_wd_i),                 .wreg_i(ex_wreg_i),
         
-        .hi_i(hi),                  .lo_i(lo),
-        .wb_hi_i(wb_hi_i),          .wb_lo_i(wb_lo_i),
-        .wb_whilo_i(wb_whilo_i),    .mem_hi_i(mem_hi_o),
-        .mem_lo_i(mem_lo_o),        .mem_whilo_i(mem_whilo_o),
+        .hi_i(hi),                      .lo_i(lo),
+        .wb_hi_i(wb_hi_i),              .wb_lo_i(wb_lo_i),
+        .wb_whilo_i(wb_whilo_i),        .mem_hi_i(mem_hi_o),
+        .mem_lo_i(mem_lo_o),            .mem_whilo_i(mem_whilo_o),
+
+        .hilo_temp_i(hilo_temp_i),      .cnt_i(cnt_i),
         
+        .div_result_i(div_result),      .div_ready_i(div_ready),
+
         // 输出到 EX/MEM 模块的信息
-        .wd_o(ex_wd_o),             .wreg_o(ex_wreg_o),
-        .wdata_o(ex_wdata_o),       .hi_o(ex_hi_o),
-        .lo_o(ex_lo_o),             .whilo_o(ex_whilo_o)
+        .wd_o(ex_wd_o),                 .wreg_o(ex_wreg_o),
+        .wdata_o(ex_wdata_o),           .hi_o(ex_hi_o),
+        .lo_o(ex_lo_o),                 .whilo_o(ex_whilo_o),
+
+        .hilo_temp_o(hilo_temp_o),      .cnt_o(cnt_o),
+        
+        .div_opdata1_o(div_opdata1),    .div_opdata2_o(div_opdata2),
+        .div_start_o(div_start),        .signed_div_o(signed_div),
+
+        .stallreq(stallreq_from_ex)
     );
 
     // EX/MEM 模块实例化
     ex_mem ex_mem0(
         .clk(clk),                  .rst(rst),
+        .stall(stall),
 
         // 来自执行阶段 EX 模块的信息
         .ex_wd(ex_wd_o),            .ex_wreg(ex_wreg_o),
         .ex_wdata(ex_wdata_o),      .ex_hi(ex_hi_o),
         .ex_lo(ex_lo_o),            .ex_whilo(ex_whilo_o),
 
+        .hilo_i(hilo_temp_o),       .cnt_i(cnt_o),
+
         // 送到访存阶段 MEM 模块的信息
         .mem_wd(mem_wd_i),          .mem_wreg(mem_wreg_i),
         .mem_wdata(mem_wdata_i),    .mem_hi(mem_hi_i),
-        .mem_lo(mem_lo_i),          .mem_whilo(mem_whilo_i)
+        .mem_lo(mem_lo_i),          .mem_whilo(mem_whilo_i),
+
+        .hilo_o(hilo_temp_i),       .cnt_o(cnt_i)
     );
 
 
@@ -191,6 +237,7 @@ module openmips (
     // MEM/WB 模块实例化
     mem_wb mem_wb0(
         .clk(clk),                  .rst(rst),
+        .stall(stall),
 
         // 来自访存阶段 MEM 模块的信息
         .mem_wd(mem_wd_o),          .mem_wreg(mem_wreg_o),
@@ -213,5 +260,24 @@ module openmips (
 
         // 读端口
         .hi_o(hi),                  .lo_o(lo)
+    );
+
+    // ctrl
+    ctrl ctrl0(
+        .rst(rst),                  .stallreq_from_id(stallreq_from_id),
+        .stallreq_from_ex(stallreq_from_ex),
+
+        .stall(stall)
+    );
+
+    // div
+    div div0(
+        .clk(clk),                  .rst(rst),
+
+        .signed_div_i(signed_div),  .opdata1_i(div_opdata1),
+        .opdata2_i(div_opdata2),    .start_i(div_start),
+        .annul_i(1'b0),
+
+        .result_o(div_result),      .ready_o(div_ready)
     );
 endmodule

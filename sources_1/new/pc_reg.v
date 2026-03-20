@@ -1,6 +1,7 @@
 module pc_reg (
     input   wire                clk,
     input   wire                rst,
+    input   wire[5:0]           stall,      // 来自控制模块 CTRL
     output  reg[`InstAddrBus]   pc,
     output  reg                 ce
 );
@@ -15,7 +16,7 @@ module pc_reg (
     always @(posedge clk) begin
         if (ce == `ChipDisable) begin
             pc <= 32'h00000000;             // 指令存储器禁用的时候，PC 为 0
-        end else begin
+        end else if (stall[0] == `NoStop) begin     // 不暂停时才继续，否则保持 pc 不变
             pc <= pc + 4'h4;                // 指令存储器使能的时候，PC 的值每时钟周期加
         end
     end
