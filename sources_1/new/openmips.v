@@ -4,7 +4,14 @@ module openmips (
 
     input   wire[`RegBus]           rom_data_i,
     output  wire[`RegBus]           rom_addr_o,
-    output  wire                    rom_ce_o
+    output  wire                    rom_ce_o,
+
+    input   wire[`RegBus]           ram_data_i,
+    output  wire[`RegBus]           ram_addr_o,
+    output  wire[`RegBus]           ram_data_o,
+    output  wire                    ram_we_o,
+    output  wire[3:0]               ram_sel_o,
+    output  wire                    ram_ce_o
 );
     // 连接 IF/ID 模块输出与译码阶段 ID 模块的输入的变量
     wire[`InstAddrBus]          pc;
@@ -20,6 +27,7 @@ module openmips (
     wire[`RegAddrBus]           id_wd_o;
     wire                        id_is_in_delayslot_o;
     wire[`RegBus]               id_link_address_o;
+    wire[`RegBus]               id_inst_o;
 
     // 连接 ID/EX 模块输出与执行阶段 EX 模块的输入的变量
     wire[`AluOpBus]             ex_aluop_i;
@@ -30,6 +38,7 @@ module openmips (
     wire[`RegAddrBus]           ex_wd_i;
     wire                        ex_is_in_delayslot_i;
     wire[`RegBus]               ex_link_address_i;
+    wire[`RegBus]               ex_inst_i;
 
     // 连接执行阶段 EX 模块的输出与 EX/MEM 模块的输入的变量
     wire                        ex_wreg_o;
@@ -38,6 +47,10 @@ module openmips (
     wire[`RegBus]               ex_hi_o;
     wire[`RegBus]               ex_lo_o;
     wire                        ex_whilo_o;
+    wire[`AluOpBus]             ex_aluop_o;
+    wire[`RegBus]               ex_mem_addr_o;
+    wire[`RegBus]               ex_reg1_o;
+    wire[`RegBus]               ex_reg2_o;
 
     // 连接 EX/MEM 模块的输出与访存阶段 MEM 模块的输入的变量
     wire                        mem_wreg_i;
@@ -46,6 +59,10 @@ module openmips (
     wire[`RegBus]               mem_hi_i;
     wire[`RegBus]               mem_lo_i;
     wire                        mem_whilo_i;
+    wire[`AluOpBus]             mem_aluop_i;
+    wire[`RegBus]               mem_mem_addr_i;
+    wire[`RegBus]               mem_reg1_i;
+    wire[`RegBus]               mem_reg2_i;
 
     // 连接访存阶段 MEM 模块的输出与 MEM/MB 模块的输入的变量
     wire                        mem_wreg_o;
@@ -62,6 +79,8 @@ module openmips (
     wire[`RegBus]               wb_hi_i;
     wire[`RegBus]               wb_lo_i;
     wire                        wb_whilo_i;
+    wire                        wb_LLbit_value_i;
+    wire                        wb_LLbit_we_i;
 
     // 连接译码阶段 ID 模块与通用寄存器 Regfile 模块的变量
     wire                        reg1_read;
@@ -100,6 +119,8 @@ module openmips (
     wire                        stallreq_from_id;
     wire                        stallreq_from_ex;
 
+    wire                        LLbit_o;
+
     // pc_reg 实例化
     pc_reg pc_reg0(
         .clk(clk),
@@ -127,7 +148,9 @@ module openmips (
     // 译码阶段 ID 模块实例化
     id id0(
         .rst(rst),  .pc_i(id_pc_i), .inst_i(id_inst_i),
-        
+
+        .ex_aluop_i(ex_aluop_o),
+
         // 来自 Regfile 模块的输入
         .reg1_data_i(reg1_data),    .reg2_data_i(reg2_data),
 
@@ -151,6 +174,7 @@ module openmips (
         .aluop_o(id_aluop_o),       .alusel_o(id_alusel_o),
         .reg1_o(id_reg1_o),         .reg2_o(id_reg2_o),
         .wd_o(id_wd_o),             .wreg_o(id_wreg_o),
+        .inst_o(id_inst_o),
 
         .next_inst_in_delayslot_o(next_inst_in_delayslot_o),
         .branch_flag_o(id_branch_flag_o),
@@ -185,6 +209,7 @@ module openmips (
         .id_link_address(id_link_address_o),
         .id_is_in_delayslot(id_is_in_delayslot_o),
         .next_inst_in_delayslot_i(next_inst_in_delayslot_o),
+        .id_inst(id_inst_o),
 
         // 传递到执行阶段 EX 模块的信息
         .ex_aluop(ex_aluop_i),      .ex_alusel(ex_alusel_i),
@@ -193,7 +218,8 @@ module openmips (
 
         .ex_link_address(ex_link_address_i),
         .ex_is_in_delayslot(ex_is_in_delayslot_i),
-        .is_in_delayslot_o(is_in_delayslot_i)
+        .is_in_delayslot_o(is_in_delayslot_i),
+        .ex_inst(ex_inst_i)
     );
 
     // EX 模块实例化
@@ -214,6 +240,8 @@ module openmips (
         
         .div_result_i(div_result),      .div_ready_i(div_ready),
 
+        .inst_i(ex_inst_i),
+
         .link_address_i(ex_link_address_i),
         .is_in_delayslot_i(ex_is_in_delayslot_i),
 
@@ -226,6 +254,10 @@ module openmips (
         
         .div_opdata1_o(div_opdata1),    .div_opdata2_o(div_opdata2),
         .div_start_o(div_start),        .signed_div_o(signed_div),
+
+        .aluop_o(ex_aluop_o),
+        .mem_addr_o(ex_mem_addr_o),
+        .reg2_o(ex_reg2_o),
 
         .stallreq(stallreq_from_ex)
     );
@@ -240,12 +272,18 @@ module openmips (
         .ex_wdata(ex_wdata_o),      .ex_hi(ex_hi_o),
         .ex_lo(ex_lo_o),            .ex_whilo(ex_whilo_o),
 
+        .ex_aluop(ex_aluop_o),      .ex_mem_addr(ex_mem_addr_o),
+        .ex_reg2(ex_reg2_o),
+
         .hilo_i(hilo_temp_o),       .cnt_i(cnt_o),
 
         // 送到访存阶段 MEM 模块的信息
         .mem_wd(mem_wd_i),          .mem_wreg(mem_wreg_i),
         .mem_wdata(mem_wdata_i),    .mem_hi(mem_hi_i),
         .mem_lo(mem_lo_i),          .mem_whilo(mem_whilo_i),
+
+        .mem_aluop(mem_aluop_i),    .mem_mem_addr(mem_mem_addr_i),
+        .mem_reg2(mem_reg2_i),
 
         .hilo_o(hilo_temp_i),       .cnt_o(cnt_i)
     );
@@ -260,10 +298,29 @@ module openmips (
         .wdata_i(mem_wdata_i),      .hi_i(mem_hi_i),
         .lo_i(mem_lo_i),            .whilo_i(mem_whilo_i),
 
+        .aluop_i(mem_aluop_i),      .mem_addr_i(mem_mem_addr_i),
+        .reg2_i(mem_reg2_i),
+
+        // 来自 DRAM 的信息
+        .mem_data_i(ram_data_i),
+
+        .LLbit_i(LLbit_o),
+
+        .wb_LLbit_we_i(wb_LLbit_we_i),
+        .wb_LLbit_value_i(wb_LLbit_value_i),
+
+        .LLbit_we_o(mem_LLbit_we_o),
+        .LLbit_value_o(mem_LLbit_value_o),
+
         // 送到 MEM/WB 模块的信息
         .wd_o(mem_wd_o),            .wreg_o(mem_wreg_o),
         .wdata_o(mem_wdata_o),      .hi_o(mem_hi_o),
-        .lo_o(mem_lo_o),            .whilo_o(mem_whilo_o)
+        .lo_o(mem_lo_o),            .whilo_o(mem_whilo_o),
+
+        // 送到 DRAM 的信息
+        .mem_addr_o(ram_addr_o),    .mem_we_o(ram_we_o),
+        .mem_sel_o(ram_sel_o),      .mem_data_o(ram_data_o),
+        .mem_ce_o(ram_ce_o)
     );
 
     // MEM/WB 模块实例化
@@ -276,10 +333,16 @@ module openmips (
         .mem_wdata(mem_wdata_o),    .mem_hi(mem_hi_o),
         .mem_lo(mem_lo_o),          .mem_whilo(mem_whilo_o),
 
+        .mem_LLbit_we(mem_LLbit_we_o),
+        .mem_LLbit_value(mem_LLbit_value_o),
+
         // 送到回写阶段的信息
         .wb_wd(wb_wd_i),            .wb_wreg(wb_wreg_i),
         .wb_wdata(wb_wdata_i),      .wb_hi(wb_hi_i),
-        .wb_lo(wb_lo_i),            .wb_whilo(wb_whilo_i)
+        .wb_lo(wb_lo_i),            .wb_whilo(wb_whilo_i),
+
+        .wb_LLbit_we(wb_LLbit_we_i),
+        .wb_LLbit_value(wb_LLbit_value_i)
     );
 
     // HI/LO 模块实例化
@@ -311,5 +374,16 @@ module openmips (
         .annul_i(1'b0),
 
         .result_o(div_result),      .ready_o(div_ready)
+    );
+
+    // LL
+    LLbit_reg LLbit_reg0(
+        .clk(clk),                  .rst(rst),
+        .flush(1'b0),
+
+        .LLbit_i(wb_LLbit_value_i),
+        .we(wb_LLbit_we_i),
+
+        .LLbit_o(LLbit_o)
     );
 endmodule
