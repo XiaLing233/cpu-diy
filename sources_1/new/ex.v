@@ -49,6 +49,10 @@ module ex (
     input   wire[4:0]               wb_cp0_reg_write_addr,
     input   wire[`RegBus]           wb_cp0_reg_data,
 
+    // exception
+    input   wire[31:0]              excepttype_i,
+    input   wire[`RegBus]           current_inst_address_i,
+
     // 执行的结果
     output  reg[`RegAddrBus]        wd_o,
     output  reg                     wreg_o,
@@ -83,6 +87,11 @@ module ex (
     output  reg[4:0]                cp0_reg_write_addr_o,
     output  reg[`RegBus]            cp0_reg_data_o,
 
+    // exception
+    output  wire[31:0]              excepttype_o,
+    output  wire                    is_in_delayslot_o,
+    output  wire[`RegBus]           current_inst_address_o,
+
     output  reg                     stallreq
 );
     // 保存逻辑运算的结果
@@ -109,6 +118,9 @@ module ex (
     reg                 stallreq_for_madd_msub;
     reg                 stallreq_for_div;
 
+    reg                 trapassert;     // is trap
+    reg                 ovassert;       // is overflow
+
     // aluop_o 会传递到访存阶段，利用其确定加载、存储类型
     assign aluop_o = aluop_i;
     
@@ -117,6 +129,13 @@ module ex (
     
     // 存储指令要存储的数据
     assign reg2_o = reg2_i;
+
+    // [10] => trap; [11] => overflow
+    assign excepttype_o = {excepttype_i[31:12], ovassert, trapassert, excepttype_i[9:8], 8'h00};
+
+    assign is_in_delayslot_o = is_in_delayslot_i;
+
+    assign current_inst_address_o = current_inst_address_i;
 
     // 进行逻辑运算
     always @(*) begin
@@ -166,10 +185,14 @@ module ex (
         end             // if
     end                 // always
 
-    // 如果是减法或者有符号比较运算，则等于 reg2_i 补码，否则原样
+    // 如果是减法、有符号比较运算或者有符号自陷，则等于 reg2_i 补码，否则原样
     assign reg2_i_mux = ((aluop_i == `EXE_SUB_OP)   ||
                          (aluop_i == `EXE_SUBU_OP)  ||
-                         (aluop_i == `EXE_SLT_OP))  ?
+                         (aluop_i == `EXE_SLT_OP)   ||
+                         (aluop_i == `EXE_TLT_OP)   ||
+                         (aluop_i == `EXE_TLTI_OP)  ||
+                         (aluop_i == `EXE_TGE_OP)   ||
+                         (aluop_i == `EXE_TGEI_OP)) ?
                          (~reg2_i) + 1 : reg2_i;
 
     assign result_sum = reg1_i + reg2_i_mux;    // 加法？减法？有符号比较
@@ -177,7 +200,11 @@ module ex (
     assign ov_sum = ((!reg1_i[31] && !reg2_i_mux[31]) && result_sum[31])                // pos + pos == neg
                     || ((reg1_i[31] && reg2_i_mux[31]) && (!result_sum[31]));           // neg + neg == pos
 
-    assign reg1_lt_reg2 =   (aluop_i == `EXE_SLT_OP) ?                                   // 有符号比较
+    assign reg1_lt_reg2 =   ((aluop_i == `EXE_SLT_OP)   ||
+                              (aluop_i == `EXE_TLT_OP)  ||
+                              (aluop_i == `EXE_TLTI_OP) ||
+                              (aluop_i == `EXE_TGE_OP)  ||
+                              (aluop_i == `EXE_TGEI_OP)) ?                                  // 有符号比较
                             ((reg1_i[31] && !reg2_i[31]) ||                                 // 负 < 正
                             (!reg1_i[31] && !reg2_i[31] && result_sum[31]) ||               // 两个正数，相减小于 0
                             (reg1_i[31] && reg2_i[31] && result_sum[31]))                   // 两个负数，相减小于 0
@@ -239,6 +266,47 @@ module ex (
                 default: begin
                     arithmeticres   <=  `ZeroWord;
                 end
+            endcase
+        end
+    end
+
+    // trap?
+    always @(*) begin
+        if (rst == `RstEnable) begin
+            trapassert <= `TrapNotAssert;
+        end else begin
+            trapassert <= `TrapNotAssert;
+            case (aluop_i)
+                // teq, teqi 指令
+                `EXE_TEQ_OP, `EXE_TEQI_OP: begin
+                    if (reg1_i == reg2_i) begin
+                        trapassert <= `TrapAssert;
+                    end
+                end
+                
+                // tge, tgei, tgeiu, tgeu 指令
+                `EXE_TGE_OP, `EXE_TGEI_OP, `EXE_TGEIU_OP, `EXE_TGEU_OP: begin
+                    if (~reg1_lt_reg2) begin
+                        trapassert <= `TrapAssert;
+                    end
+                end
+
+                // tlt, tlti, tltiu, tltu 指令
+                `EXE_TLT_OP, `EXE_TLTI_OP, `EXE_TLTIU_OP, `EXE_TLTU_OP: begin
+                    if (reg1_lt_reg2) begin
+                        trapassert <= `TrapAssert;
+                    end
+                end
+
+                // tne, tnei 指令
+                `EXE_TNE_OP, `EXE_TNEI_OP: begin
+                    if (reg1_i != reg2_i) begin
+                        trapassert <= `TrapAssert;
+                    end
+                end
+                default: begin
+                    trapassert <= `TrapNotAssert;
+                end 
             endcase
         end
     end
@@ -440,8 +508,10 @@ module ex (
         if (((aluop_i == `EXE_ADD_OP) || (aluop_i == `EXE_ADDI_OP) ||
             (aluop_i == `EXE_SUB_OP )) && (ov_sum == 1'b1)) begin       // 如果检测溢出的指令发生溢出，不写目的寄存器
                 wreg_o <= `WriteDisable;
+                ovassert <= 1'b1;
             end else begin
                 wreg_o <= wreg_i;
+                ovassert <= 1'b0;
             end
         case (alusel_i)
             `EXE_RES_LOGIC: begin

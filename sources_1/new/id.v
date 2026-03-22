@@ -44,6 +44,9 @@ module id (
 
     output  wire[`RegBus]           inst_o,
 
+    output  wire[31:0]              excepttype_o,
+    output  wire[`RegBus]           current_inst_address_o,
+
     output  wire                    stallreq
 );
     
@@ -68,6 +71,9 @@ module id (
 
     wire[`RegBus] imm_sll2_signedext;
 
+    reg excepttype_is_syscall;          // 是否是 syscall
+    reg excepttype_is_eret;             // 是否是 eret
+
     assign pc_plus_8 = pc_i + 8;        // 保存当前译码阶段指令后面第二条指令的地址
     assign pc_plus_4 = pc_i + 4;        // 保存当前译码阶段指令后面紧接着的指令的地址
     assign stallreq = stallreq_for_reg1_loadrelate | stallreq_for_reg2_loadrelate;
@@ -84,6 +90,12 @@ module id (
     assign imm_sll2_signedext = {{14{inst_i[15]}}, inst_i[15:0], 2'b00};
 
     assign inst_o = inst_i;
+
+    // 低 8 位给外部中断 ，[8] 表示 syscall，[9] 表示无效指令，[12] 表示 eret
+    assign excepttype_o = {19'b0, excepttype_is_eret, 2'b0, instvalid, excepttype_is_syscall, 8'b0};
+    
+    // 当前处于译码阶段指令的地址
+    assign current_inst_address_o = pc_i;
 
     // 第一段：对指令进行译码
     always @(*) begin
@@ -117,6 +129,8 @@ module id (
             branch_target_address_o     <=  `ZeroWord;
             branch_flag_o               <=  `NotBranch;
             next_inst_in_delayslot_o    <=  `NotInDelaySlot;
+            excepttype_is_syscall       <=  `False_v;
+            excepttype_is_eret          <=  `False_v;
 
             case (op)
                 `EXE_SPECIAL_INST: begin            // 指令码是 SPECIAL
@@ -351,6 +365,63 @@ module id (
                                     branch_flag_o               <=  `Branch;
                                     next_inst_in_delayslot_o    <=  `InDelaySlot;
                                     instvalid                   <=  `InstValid;
+                                end
+                                `EXE_TEQ: begin     // teq 指令
+                                    wreg_o      <=  `WriteDisable;
+                                    aluop_o     <=  `EXE_TEQ_OP;
+                                    alusel_o    <=  `EXE_RES_NOP;
+                                    reg1_read_o <=  1'b1;
+                                    reg2_read_o <=  1'b1;
+                                    instvalid   <=  `InstValid;
+                                end
+                                `EXE_TGE: begin     // tge 指令
+                                    wreg_o      <=  `WriteDisable;
+                                    aluop_o     <=  `EXE_TGE_OP;
+                                    alusel_o    <=  `EXE_RES_NOP;
+                                    reg1_read_o <=  1'b1;
+                                    reg2_read_o <=  1'b1;
+                                    instvalid   <=  `InstValid;
+                                end
+                                `EXE_TGEU: begin    // tgeu 指令
+                                    wreg_o      <=  `WriteDisable;
+                                    aluop_o     <=  `EXE_TGEU_OP;
+                                    alusel_o    <=  `EXE_RES_NOP;
+                                    reg1_read_o <=  1'b1;
+                                    reg2_read_o <=  1'b1;
+                                    instvalid   <=  `InstValid;
+                                end
+                                `EXE_TLT: begin     // tlt 指令
+                                    wreg_o      <=  `WriteDisable;
+                                    aluop_o     <=  `EXE_TLT_OP;
+                                    alusel_o    <=  `EXE_RES_NOP;
+                                    reg1_read_o <=  1'b1;
+                                    reg2_read_o <=  1'b1;
+                                    instvalid   <=  `InstValid;
+                                end
+                                `EXE_TLTU: begin    // tltu 指令
+                                    wreg_o      <=  `WriteDisable;
+                                    aluop_o     <=  `EXE_TLTU_OP;
+                                    alusel_o    <=  `EXE_RES_NOP;
+                                    reg1_read_o <=  1'b1;
+                                    reg2_read_o <=  1'b1;
+                                    instvalid   <=  `InstValid;
+                                end
+                                `EXE_TNE: begin     // tne 指令
+                                    wreg_o      <=  `WriteDisable;
+                                    aluop_o     <=  `EXE_TNE_OP;
+                                    alusel_o    <=  `EXE_RES_NOP;
+                                    reg1_read_o <=  1'b1;
+                                    reg2_read_o <=  1'b1;
+                                    instvalid   <=  `InstValid;
+                                end
+                                `EXE_SYSCALL: begin // syscall 指令
+                                    wreg_o                  <=  `WriteDisable;
+                                    aluop_o                 <=  `EXE_SYSCALL_OP;
+                                    alusel_o                <=  `EXE_RES_NOP;
+                                    reg1_read_o             <=  1'b0;
+                                    reg2_read_o             <=  1'b0;
+                                    instvalid               <=  `InstValid;
+                                    excepttype_is_syscall   <=  `True_v;
                                 end
                                 default: begin
                                     // 其他 SPECIAL 指令 => 无效
@@ -648,6 +719,60 @@ module id (
                                 next_inst_in_delayslot_o    <=  `InDelaySlot;
                             end
                         end
+                        `EXE_TEQI: begin            // teqi 指令
+                            wreg_o          <=  `WriteDisable;
+                            aluop_o         <=  `EXE_TEQI_OP;
+                            alusel_o        <=  `EXE_RES_NOP;
+                            reg1_read_o     <=  1'b1;
+                            reg2_read_o     <=  1'b0;
+                            imm             <=  {{16{inst_i[15]}}, inst_i[15:0]};
+                            instvalid       <=  `InstValid;
+                        end
+                        `EXE_TGEI: begin            // tgei 指令
+                            wreg_o          <=  `WriteDisable;
+                            aluop_o         <=  `EXE_TGEI_OP;
+                            alusel_o        <=  `EXE_RES_NOP;
+                            reg1_read_o     <=  1'b1;
+                            reg2_read_o     <=  1'b0;
+                            imm             <=  {{16{inst_i[15]}}, inst_i[15:0]};
+                            instvalid       <=  `InstValid;
+                        end
+                        `EXE_TGEIU: begin           // tgeiu 指令
+                            wreg_o          <=  `WriteDisable;
+                            aluop_o         <=  `EXE_TGEIU_OP;
+                            alusel_o        <=  `EXE_RES_NOP;
+                            reg1_read_o     <=  1'b1;
+                            reg2_read_o     <=  1'b0;
+                            imm             <=  {{16{inst_i[15]}}, inst_i[15:0]};
+                            instvalid       <=  `InstValid;
+                        end
+                        `EXE_TLTI: begin           // tlti 指令
+                            wreg_o          <=  `WriteDisable;
+                            aluop_o         <=  `EXE_TLTI_OP;
+                            alusel_o        <=  `EXE_RES_NOP;
+                            reg1_read_o     <=  1'b1;
+                            reg2_read_o     <=  1'b0;
+                            imm             <=  {{16{inst_i[15]}}, inst_i[15:0]};
+                            instvalid       <=  `InstValid;
+                        end
+                        `EXE_TLTIU: begin           // tltiu 指令
+                            wreg_o          <=  `WriteDisable;
+                            aluop_o         <=  `EXE_TLTIU_OP;
+                            alusel_o        <=  `EXE_RES_NOP;
+                            reg1_read_o     <=  1'b1;
+                            reg2_read_o     <=  1'b0;
+                            imm             <=  {{16{inst_i[15]}}, inst_i[15:0]};
+                            instvalid       <=  `InstValid;
+                        end
+                        `EXE_TNEI: begin            // tnei 指令
+                            wreg_o          <=  `WriteDisable;
+                            aluop_o         <=  `EXE_TNEI_OP;
+                            alusel_o        <=  `EXE_RES_NOP;
+                            reg1_read_o     <=  1'b1;
+                            reg2_read_o     <=  1'b0;
+                            imm             <=  {{16{inst_i[15]}}, inst_i[15:0]};
+                            instvalid       <=  `InstValid;
+                        end
                         default: begin
                             // 其他 REGIMM 指令
                         end
@@ -826,6 +951,16 @@ module id (
                 reg1_read_o     <=  1'b1;
                 reg1_addr_o     <=  inst_i[20:16];
                 reg2_read_o     <=  1'b0;
+            end
+
+            if (inst_i == `EXE_ERET) begin      // eret 指令
+                wreg_o              <=  `WriteDisable;
+                aluop_o             <=  `EXE_ERET_OP;
+                alusel_o            <=  `EXE_RES_NOP;
+                reg1_read_o         <=  1'b0;
+                reg2_read_o         <=  1'b0;
+                instvalid           <=  `InstValid;
+                excepttype_is_eret  <=  `True_v;
             end
         end     // if
     end         // always

@@ -19,7 +19,7 @@ module openmips_min_sopc_tb();
     initial begin
         rst = `RstEnable;
         #195 rst = `RstDisable;
-        #4100 $stop;
+        #10000 $stop;
     end
 
     // 实例化最小 SOPC

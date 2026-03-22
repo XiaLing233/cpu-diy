@@ -9,18 +9,22 @@ module cp0_reg (
 
     input   wire[5:0]               int_i,
 
+    input   wire[31:0]              excepttype_i,
+    input   wire[`RegBus]           current_inst_addr_i,
+    input   wire                    is_in_delayslot_i,
+
     output  reg[`RegBus]            data_o,
+
+    output  reg[`RegBus]            count_o,
+    output  reg[`RegBus]            compare_o,
+    output  reg[`RegBus]            status_o,
+    output  reg[`RegBus]            cause_o,
+    output  reg[`RegBus]            epc_o,
+    output  reg[`RegBus]            config_o,
+    output  reg[`RegBus]            prid_o,
 
     output  reg                     timer_int_o
 );
-
-    reg[`RegBus]    count_o;
-    reg[`RegBus]    compare_o;
-    reg[`RegBus]    status_o;
-    reg[`RegBus]    cause_o;
-    reg[`RegBus]    epc_o;
-    reg[`RegBus]    config_o;
-    reg[`RegBus]    prid_o;
 
     // 写操作
     always @(posedge clk) begin
@@ -63,6 +67,78 @@ module cp0_reg (
                     end 
                 endcase
             end
+
+            case (excepttype_i)
+                32'h00000001: begin         // 外部中断
+                    if (is_in_delayslot_i == `InDelaySlot) begin
+                        epc_o <= current_inst_addr_i - 4;
+                        cause_o[31] <= 1'b1;
+                    end else begin
+                        epc_o <= current_inst_addr_i;
+                        cause_o[31] <= 1'b0;
+                    end
+                    status_o[1] <= 1'b1;            // EXL
+                    cause_o[6:2] <= 5'b00000;       // ExcCode
+                end
+                32'h00000008: begin         // syscall
+                    if (status_o[1] == 1'b0) begin
+                        if (is_in_delayslot_i == `InDelaySlot) begin
+                            epc_o <= current_inst_addr_i - 4;
+                            cause_o[31] <= 1'b1;
+                        end else begin
+                            epc_o <= current_inst_addr_i;
+                            cause_o[31] <= 1'b0;
+                        end
+                    end
+                    status_o[1] <= 1'b1;
+                    cause_o[6:2] <= 5'b01000;
+                end
+                32'h0000000a: begin         // invalid_inst
+                    if (status_o[1] == 1'b0) begin
+                        if (is_in_delayslot_i == `InDelaySlot) begin
+                            epc_o <= current_inst_addr_i - 4;
+                            cause_o <= 1'b1;
+                        end else begin
+                            epc_o <= current_inst_addr_i;
+                            cause_o[31] <= 1'b0;
+                        end
+                    end
+                    status_o[1] <= 1'b1;
+                    cause_o[6:2] <= 5'b01010;
+                end
+                32'h0000000d: begin         // trap
+                    if (status_o[1] == 1'b0) begin
+                        if (is_in_delayslot_i == `InDelaySlot) begin
+                            epc_o <= current_inst_addr_i - 4;
+                            cause_o[31] <= 1'b1;
+                        end else begin
+                            epc_o <= current_inst_addr_i;
+                            cause_o[31] <= 1'b0;
+                        end
+                    end
+                    status_o[1] <= 1'b1;
+                    cause_o[6:2] <= 5'b01101;
+                end
+                32'h0000000c: begin         // overflow
+                    if (status_o[1] == 1'b0) begin
+                        if (is_in_delayslot_i == `InDelaySlot) begin
+                            epc_o <= current_inst_addr_i - 4;
+                            cause_o[31] <= 1'b1;
+                        end else begin
+                            epc_o <= current_inst_addr_i;
+                            cause_o[31] <= 1'b0;
+                        end
+                    end
+                    status_o[1] <= 1'b1;
+                    cause_o[6:2] <= 5'b01100;
+                end
+                32'h0000000e: begin         // eret
+                    status_o[1] <= 1'b0;
+                end
+                default: begin
+                    // other exception
+                end
+            endcase
         end
     end
 
