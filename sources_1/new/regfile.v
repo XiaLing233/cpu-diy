@@ -19,10 +19,15 @@ module regfile (
 );
     // 第一段：定义 32 个 32 位寄存器
     reg[`RegBus] regs[0:`RegNum-1];
+    integer i;
 
     // 第二段：写操作
     always @(posedge clk) begin
-        if (rst == `RstDisable) begin
+        if (rst == `RstEnable) begin
+            for (i = 0; i < `RegNum; i = i + 1) begin
+                regs[i] <= `ZeroWord;
+            end
+        end else begin
             if ((we == `WriteEnable) && (waddr != `RegNumLog2'h0)) begin
                 regs[waddr] <= wdata;
             end

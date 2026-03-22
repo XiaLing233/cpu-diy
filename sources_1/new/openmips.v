@@ -170,6 +170,7 @@ module openmips (
     wire[`RegBus]               cp0_prid;
 
     wire[`RegBus]               latest_epc;
+    wire[`RegBus]               ram_addr_virtual;
 
     // pc_reg 实例化
     pc_reg pc_reg0(
@@ -184,7 +185,8 @@ module openmips (
         .ce(rom_ce_o)
     );
 
-    assign rom_addr_o = pc;         // 指令存储器的输入地址就是 pc 的值
+    // CPU 内部维护虚拟地址，在访存接口处转换为物理地址
+    assign rom_addr_o = pc - `MARS_TEXT_BASE;
 
     // IF/ID 模块实例化
     if_id if_id0(
@@ -432,7 +434,7 @@ module openmips (
         .lo_o(mem_lo_o),            .whilo_o(mem_whilo_o),
 
         // 送到 DRAM 的信息
-        .mem_addr_o(ram_addr_o),    .mem_we_o(ram_we_o),
+        .mem_addr_o(ram_addr_virtual),  .mem_we_o(ram_we_o),
         .mem_sel_o(ram_sel_o),      .mem_data_o(ram_data_o),
         .mem_ce_o(ram_ce_o),
 
@@ -441,6 +443,8 @@ module openmips (
         .is_in_delayslot_o(mem_is_in_delayslot_o),
         .current_inst_address_o(mem_current_inst_address_o)
     );
+
+    assign ram_addr_o = ram_addr_virtual - `MARS_DATA_BASE;
 
     // MEM/WB 模块实例化
     mem_wb mem_wb0(

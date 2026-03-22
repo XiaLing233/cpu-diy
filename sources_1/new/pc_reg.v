@@ -23,7 +23,7 @@ module pc_reg (
 
     always @(posedge clk) begin
         if (ce == `ChipDisable) begin
-            pc <= 32'h00000000;             // 指令存储器禁用的时候，PC 为 0
+            pc <= `MARS_TEXT_BASE;          // 指令存储器禁用的时候，PC 指向虚拟文本段基址
         end else begin
             if (flush == 1'b1) begin
                 // flush == 1 说明异常发生，将从 CTRL 模块给出的 new_pc 处开始执行

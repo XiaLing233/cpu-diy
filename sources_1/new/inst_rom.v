@@ -7,7 +7,7 @@ module inst_rom (
     reg[`InstBus]   inst_mem[0:`InstMemNum-1];
 
     // 使用文件 inst_rom.data 初始化指令存储器
-    initial $readmemh("inst_rom.data", inst_mem);
+    initial $readmemh("89_test.data", inst_mem);
 
     // 当复位信号无效时，根据输入的地址，给出指令存储器 ROM 中对应的元素
     always @(*) begin

@@ -72,6 +72,7 @@ module id (
     wire[`RegBus] imm_sll2_signedext;
 
     reg excepttype_is_syscall;          // 是否是 syscall
+    reg excepttype_is_break;          // 是否是 break
     reg excepttype_is_eret;             // 是否是 eret
 
     assign pc_plus_8 = pc_i + 8;        // 保存当前译码阶段指令后面第二条指令的地址
@@ -91,8 +92,8 @@ module id (
 
     assign inst_o = inst_i;
 
-    // 低 8 位给外部中断 ，[8] 表示 syscall，[9] 表示无效指令，[12] 表示 eret
-    assign excepttype_o = {19'b0, excepttype_is_eret, 2'b0, instvalid, excepttype_is_syscall, 8'b0};
+    // 低 8 位给外部中断 ，[8] 表示 syscall，[9] 表示无效指令，[12] 表示 eret, [13] 表示 break
+    assign excepttype_o = {18'b0, excepttype_is_break, excepttype_is_eret, 2'b0, instvalid, excepttype_is_syscall, 8'b0};
     
     // 当前处于译码阶段指令的地址
     assign current_inst_address_o = pc_i;
@@ -130,6 +131,7 @@ module id (
             branch_flag_o               <=  `NotBranch;
             next_inst_in_delayslot_o    <=  `NotInDelaySlot;
             excepttype_is_syscall       <=  `False_v;
+            excepttype_is_break         <=  `False_v;
             excepttype_is_eret          <=  `False_v;
 
             case (op)
@@ -422,6 +424,15 @@ module id (
                                     reg2_read_o             <=  1'b0;
                                     instvalid               <=  `InstValid;
                                     excepttype_is_syscall   <=  `True_v;
+                                end
+                                `EXE_BREAK: begin   // break 指令
+                                    wreg_o                  <=  `WriteDisable;
+                                    aluop_o                 <=  `EXE_BREAK_OP;
+                                    alusel_o                <=  `EXE_RES_NOP;
+                                    reg1_read_o             <=  1'b0;
+                                    reg2_read_o             <=  1'b0;
+                                    instvalid               <=  `InstValid;
+                                    excepttype_is_break     <=  `True_v;
                                 end
                                 default: begin
                                     // 其他 SPECIAL 指令 => 无效

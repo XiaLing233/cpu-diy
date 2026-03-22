@@ -5,6 +5,7 @@ module openmips_min_sopc (
     // 连接指令存储器
     wire[`InstAddrBus]  inst_addr;
     wire[`InstBus]      inst;
+    wire[`InstBus]      inst_from_ip;
     wire                rom_ce;
 
     wire                mem_we_i;
@@ -35,10 +36,18 @@ module openmips_min_sopc (
     );
 
     // 实例化处理器 ROM
-    inst_rom inst_rom0(
-        .ce(rom_ce),
-        .addr(inst_addr),           .inst(inst)
+    // inst_rom inst_rom0(
+    //     .ce(rom_ce),
+    //     .addr(inst_addr),           .inst(inst)
+    // );
+
+    ip_inst_rom ip_inst_rom0(
+        .a(inst_addr[12:2]),
+        .spo(inst_from_ip)
     );
+
+    // IP 核无 CE 端口，使用外部门控保持与原 inst_rom 一致的行为
+    assign inst = (rom_ce == `ChipEnable) ? inst_from_ip : `ZeroWord;
 
     data_ram data_ram0(
         .clk(clk),                  .we(mem_we_i),

@@ -102,6 +102,7 @@
 `define EXE_SWR                     6'b101110               // swr
 
 `define EXE_SYSCALL                 6'b001100               // syscall
+`define EXE_BREAK                   6'b001101               // break
 
 `define EXE_TEQ                     6'b110100               // teq
 `define EXE_TEQI                    5'b01100                // teqi
@@ -210,6 +211,7 @@
 `define EXE_MTC0_OP                 8'b01100000
 
 `define EXE_SYSCALL_OP              8'b00001100
+`define EXE_BREAK_OP                8'b00001101
 
 `define EXE_TEQ_OP                  8'b00110100
 `define EXE_TEQI_OP                 8'b01001000
@@ -253,6 +255,10 @@
 `define DataMemNum                  131071
 `define DataMemNumLog2              17
 `define ByteWidth                   7:0
+
+// Mars 虚拟地址基址
+`define MARS_TEXT_BASE              32'h00400000
+`define MARS_DATA_BASE              32'h10010000
 
 // 与通用寄存器 Regfile 有关的宏定义
 `define RegAddrBus                  4:0                     // Regfile 模块的地址线宽度

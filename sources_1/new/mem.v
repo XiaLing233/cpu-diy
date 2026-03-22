@@ -454,6 +454,8 @@ module mem (
                         excepttype_o <= 32'h0000000c;               // ov
                     end else if (excepttype_i[12] == 1'b1) begin
                         excepttype_o <= 32'h0000000e;               // eret
+                    end else if (excepttype_i[13] == 1'b1) begin
+                        excepttype_o <= 32'h00000009;               // break
                     end
             end
         end

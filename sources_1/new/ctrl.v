@@ -11,6 +11,9 @@ module ctrl (
 
     output  reg[5:0]        stall
 );
+    wire[`RegBus] exception_entry;
+    assign exception_entry = `MARS_TEXT_BASE + 32'h00000008;
+
     always @(*) begin
         if (rst == `RstEnable) begin
             stall   <=  6'b000000;
@@ -21,19 +24,22 @@ module ctrl (
             stall   <=  6'b000000;
             case (excepttype_i)
                 32'h00000001: begin         // intrrupt
-                    new_pc <= 32'h00000020;
+                    new_pc <= exception_entry;
                 end
                 32'h00000008: begin         // syscall
-                    new_pc <= 32'h00000040;
+                    new_pc <= exception_entry;
+                end
+                32'h00000009: begin         // break
+                    new_pc <= exception_entry;
                 end
                 32'h0000000a: begin         // invalid_inst
-                    new_pc <= 32'h00000040;
+                    new_pc <= exception_entry;
                 end
                 32'h0000000d: begin         // trap
-                    new_pc <= 32'h00000040;
+                    new_pc <= exception_entry;
                 end
                 32'h0000000c: begin         // overflow
-                    new_pc <= 32'h00000040;
+                    new_pc <= exception_entry;
                 end
                 32'h0000000e: begin         // eret
                     new_pc <= cp0_epc_i;
