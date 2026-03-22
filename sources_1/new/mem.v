@@ -21,6 +21,11 @@ module mem (
     input   wire                        wb_LLbit_we_i,
     input   wire                        wb_LLbit_value_i,
 
+    // cp0
+    input   wire                        cp0_reg_we_i,
+    input   wire[4:0]                   cp0_reg_write_addr_i,
+    input   wire[`RegBus]               cp0_reg_data_i,
+
     // 访存阶段的结果
     output  reg[`RegAddrBus]            wd_o,
     output  reg                         wreg_o,
@@ -38,7 +43,12 @@ module mem (
 
     // LL
     output  reg                         LLbit_we_o,
-    output  reg                         LLbit_value_o
+    output  reg                         LLbit_value_o,
+
+    // cp0
+    output  reg                         cp0_reg_we_o,
+    output  reg[4:0]                    cp0_reg_write_addr_o,
+    output  reg[`RegBus]                cp0_reg_data_o
 );
     wire[`RegBus]   zero32;
     reg             mem_we;
@@ -61,32 +71,38 @@ module mem (
 
     always @(*) begin
         if (rst == `RstEnable) begin
-            wd_o            <=  `NOPRegAddr;
-            wreg_o          <=  `WriteDisable;
-            wdata_o         <=  `ZeroWord;
-            hi_o            <=  `ZeroWord;
-            lo_o            <=  `ZeroWord;
-            whilo_o         <=  `WriteDisable;
-            mem_addr_o      <=  `ZeroWord;
-            mem_we          <=  `WriteDisable;
-            mem_sel_o       <=  4'b0000;
-            mem_data_o      <=  `ZeroWord;
-            mem_ce_o        <=  `ChipDisable;
-            LLbit_we_o      <=  1'b0;
-            LLbit_value_o   <=  1'b0;
+            wd_o                    <=  `NOPRegAddr;
+            wreg_o                  <=  `WriteDisable;
+            wdata_o                 <=  `ZeroWord;
+            hi_o                    <=  `ZeroWord;
+            lo_o                    <=  `ZeroWord;
+            whilo_o                 <=  `WriteDisable;
+            mem_addr_o              <=  `ZeroWord;
+            mem_we                  <=  `WriteDisable;
+            mem_sel_o               <=  4'b0000;
+            mem_data_o              <=  `ZeroWord;
+            mem_ce_o                <=  `ChipDisable;
+            LLbit_we_o              <=  1'b0;
+            LLbit_value_o           <=  1'b0;
+            cp0_reg_we_o            <=  `WriteDisable;
+            cp0_reg_write_addr_o    <=  5'b00000;
+            cp0_reg_data_o          <=  `ZeroWord;
         end else begin
-            wd_o            <=  wd_i;
-            wreg_o          <=  wreg_i;
-            wdata_o         <=  wdata_i;
-            hi_o            <=  hi_i;
-            lo_o            <=  lo_i;
-            whilo_o         <=  whilo_i;
-            mem_we          <=  `WriteDisable;
-            mem_addr_o      <=  `ZeroWord;
-            mem_sel_o       <=  4'b1111;
-            mem_ce_o        <=  `ChipDisable;
-            LLbit_we_o      <=  1'b0;
-            LLbit_value_o   <=  1'b0;
+            wd_o                    <=  wd_i;
+            wreg_o                  <=  wreg_i;
+            wdata_o                 <=  wdata_i;
+            hi_o                    <=  hi_i;
+            lo_o                    <=  lo_i;
+            whilo_o                 <=  whilo_i;
+            mem_we                  <=  `WriteDisable;
+            mem_addr_o              <=  `ZeroWord;
+            mem_sel_o               <=  4'b1111;
+            mem_ce_o                <=  `ChipDisable;
+            LLbit_we_o              <=  1'b0;
+            LLbit_value_o           <=  1'b0;
+            cp0_reg_we_o            <=  cp0_reg_we_i;
+            cp0_reg_write_addr_o    <=  cp0_reg_write_addr_i;
+            cp0_reg_data_o          <=  cp0_reg_data_i;
             case (aluop_i)
                 `EXE_LB_OP: begin           // lb 指令
                     mem_addr_o  <=  mem_addr_i;

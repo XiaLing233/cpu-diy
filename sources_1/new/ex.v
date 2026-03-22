@@ -39,6 +39,16 @@ module ex (
 
     input   wire[`RegBus]           inst_i,         // 当前处于执行阶段的指令
 
+    // 访存阶段的指令是否要写 CP0 中的寄存器
+    input   wire                    mem_cp0_reg_we,
+    input   wire[4:0]               mem_cp0_reg_write_addr,
+    input   wire[`RegBus]           mem_cp0_reg_data,
+
+    // 回写阶段的指令是否要写 CP0 中的寄存器
+    input   wire                    wb_cp0_reg_we,
+    input   wire[4:0]               wb_cp0_reg_write_addr,
+    input   wire[`RegBus]           wb_cp0_reg_data,
+
     // 执行的结果
     output  reg[`RegAddrBus]        wd_o,
     output  reg                     wreg_o,
@@ -63,6 +73,15 @@ module ex (
     output  wire[`AluOpBus]         aluop_o,
     output  wire[`RegBus]           mem_addr_o,
     output  wire[`RegBus]           reg2_o,
+
+    // 连接 CP0，读取寄存器的值
+    input   wire[`RegBus]           cp0_reg_data_i,
+    output  reg[4:0]                cp0_reg_read_addr_o,
+
+    // 传递到流水线下一级
+    output  reg                     cp0_reg_we_o,
+    output  reg[4:0]                cp0_reg_write_addr_o,
+    output  reg[`RegBus]            cp0_reg_data_o,
 
     output  reg                     stallreq
 );
@@ -378,7 +397,7 @@ module ex (
         end
     end
 
-    // MFHI, MFLO, MOVN, MOVZ 指令
+    // MFHI, MFLO, MOVN, MOVZ, MFC0 指令
     always @(*) begin
         if (rst == `RstEnable) begin
             moveres <= `ZeroWord;
@@ -396,6 +415,16 @@ module ex (
                 end
                 `EXE_MOVN_OP: begin             // 如果是 movn 指令，将 reg1_i 的值作为移动操作的结果
                     moveres <= reg1_i;
+                end
+                `EXE_MFC0_OP: begin
+                    cp0_reg_read_addr_o <= inst_i[15:11];   // 读取地址
+                    moveres <= cp0_reg_data_i;              // 读取到的值
+                    
+                    if (mem_cp0_reg_we == `WriteEnable && mem_cp0_reg_write_addr == inst_i[15:11]) begin
+                        moveres <= mem_cp0_reg_data;     // 数据相关
+                    end else if (wb_cp0_reg_we == `WriteEnable && wb_cp0_reg_write_addr == inst_i[15:11]) begin
+                        moveres <= wb_cp0_reg_data;
+                    end
                 end
                 default: begin
                     // pass
@@ -473,6 +502,23 @@ module ex (
             whilo_o <=  `WriteDisable;
             hi_o    <=  `ZeroWord;
             lo_o    <=  `ZeroWord;
+        end
+    end
+
+    // mtc0
+    always @(*) begin
+        if (rst == `RstEnable) begin
+            cp0_reg_write_addr_o    <= 5'b00000;
+            cp0_reg_we_o            <=  `WriteDisable;
+            cp0_reg_data_o          <=  `ZeroWord;
+        end else if (aluop_i == `EXE_MTC0_OP) begin         // mtc0 指令
+            cp0_reg_write_addr_o    <=  inst_i[15:11];
+            cp0_reg_we_o            <=  `WriteEnable;
+            cp0_reg_data_o          <=  reg1_i;
+        end else begin
+            cp0_reg_write_addr_o    <=  5'b00000;
+            cp0_reg_we_o            <=  `WriteDisable;
+            cp0_reg_data_o          <=  `ZeroWord;
         end
     end
 endmodule
