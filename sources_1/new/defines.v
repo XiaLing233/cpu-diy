@@ -246,15 +246,21 @@
 // 与指令存储器 ROM 有关的宏定义
 `define InstAddrBus                 31:0                    // ROM 的地址总线宽度
 `define InstBus                     31:0                    // ROM 的数据总线宽度
-`define InstMemNum                  131071                  // ROM 的实际大小为 128KB
-`define InstMemNumLog2              17                      // ROM 实际使用的地址线宽度
+`define InstMemNum                  32768                   // ROM 的实际大小为 128KB
+`define InstMemNumLog2              15                      // ROM 实际使用的地址线宽度
 
 // 数据存储器
 `define DataAddrBus                 31:0
 `define DataBus                     31:0
-`define DataMemNum                  131071
-`define DataMemNumLog2              17
+`define DataMemNum                  2048                    // RAM 的实际大小为 8KB（按字编址：2048 x 4B）
+`define DataMemNumLog2              11                      // RAM 实际使用的地址线宽度（字地址）
 `define ByteWidth                   7:0
+
+// 顶层数码管显示源选择（one-hot）
+`define SegShowSelBus               2:0
+`define SegShowPC                   3'b001
+`define SegShowInst                 3'b010
+`define SegShowDram0                3'b100
 
 // Mars 虚拟地址基址
 `define MARS_TEXT_BASE              32'h00400000

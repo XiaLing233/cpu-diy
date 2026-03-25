@@ -1,10 +1,10 @@
 // Copyright 1986-2019 Xilinx, Inc. All Rights Reserved.
 // --------------------------------------------------------------------------------
 // Tool Version: Vivado v.2019.2 (win64) Build 2708876 Wed Nov  6 21:40:23 MST 2019
-// Date        : Mon Mar 23 00:09:09 2026
+// Date        : Mon Mar 23 00:09:08 2026
 // Host        : Xialing running 64-bit major release  (build 9200)
-// Command     : write_verilog -force -mode funcsim
-//               c:/WorkSpace/Homework_Computer_System/CPU_DIY/CPU_DIY.srcs/sources_1/ip/ip_inst_rom/ip_inst_rom_sim_netlist.v
+// Command     : write_verilog -force -mode funcsim -rename_top ip_inst_rom -prefix
+//               ip_inst_rom_ ip_inst_rom_sim_netlist.v
 // Design      : ip_inst_rom
 // Purpose     : This verilog netlist is a functional simulation representation of the design and should not be modified
 //               or synthesized. This netlist cannot be used for SDF annotated simulation.
@@ -88,7 +88,7 @@ endmodule
 (* C_MEM_INIT_FILE = "ip_inst_rom.mif" *) (* C_MEM_TYPE = "0" *) (* C_PARSER_TYPE = "1" *) 
 (* C_PIPELINE_STAGES = "0" *) (* C_QCE_JOINED = "0" *) (* C_QUALIFY_WE = "0" *) 
 (* C_READ_MIF = "1" *) (* C_REG_A_D_INPUTS = "0" *) (* C_REG_DPRA_INPUT = "0" *) 
-(* C_SYNC_ENABLE = "1" *) (* C_WIDTH = "32" *) (* ORIG_REF_NAME = "dist_mem_gen_v8_0_13" *) 
+(* C_SYNC_ENABLE = "1" *) (* C_WIDTH = "32" *) 
 module ip_inst_rom_dist_mem_gen_v8_0_13
    (a,
     d,
@@ -232,7 +232,6 @@ module ip_inst_rom_dist_mem_gen_v8_0_13
         .spo(spo));
 endmodule
 
-(* ORIG_REF_NAME = "dist_mem_gen_v8_0_13_synth" *) 
 module ip_inst_rom_dist_mem_gen_v8_0_13_synth
    (spo,
     a);
@@ -247,7 +246,6 @@ module ip_inst_rom_dist_mem_gen_v8_0_13_synth
         .spo(spo));
 endmodule
 
-(* ORIG_REF_NAME = "rom" *) 
 module ip_inst_rom_rom
    (spo,
     a);

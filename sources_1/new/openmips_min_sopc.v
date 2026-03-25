@@ -1,6 +1,10 @@
 module openmips_min_sopc (
-    input   wire    clk,
-    input   wire    rst
+    input   wire            clk,
+    input   wire            rst,
+
+    output  wire[`DataBus]   dram_front_o,
+    output  wire[`DataBus]   pc_o,
+    output  wire[`DataBus]   inst_o
 );
     // 连接指令存储器
     wire[`InstAddrBus]  inst_addr;
@@ -48,11 +52,15 @@ module openmips_min_sopc (
 
     // IP 核无 CE 端口，使用外部门控保持与原 inst_rom 一致的行为
     assign inst = (rom_ce == `ChipEnable) ? inst_from_ip : `ZeroWord;
+    assign pc_o = inst_addr + `MARS_TEXT_BASE;
+    assign inst_o = inst;
 
     data_ram data_ram0(
         .clk(clk),                  .we(mem_we_i),
         .addr(mem_addr_i),          .sel(mem_sel_i),
         .data_i(mem_data_i),        .data_o(mem_data_o),
-        .ce(mem_ce_i)
+        .ce(mem_ce_i),
+
+        .front_o(dram_front_o)
     );
 endmodule

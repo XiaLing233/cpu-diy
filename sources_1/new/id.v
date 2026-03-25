@@ -155,14 +155,6 @@ module id (
                                     reg2_read_o <=  1'b1;
                                     instvalid   <=  `InstValid;
                                 end
-                                `EXE_AND: begin     // xor 指令
-                                    wreg_o      <=  `WriteEnable;
-                                    aluop_o     <=  `EXE_XOR_OP;
-                                    alusel_o    <=  `EXE_RES_LOGIC;
-                                    reg1_read_o <=  1'b1;
-                                    reg2_read_o <=  1'b1;
-                                    instvalid   <=  `InstValid;
-                                end
                                 `EXE_XOR: begin     // xor 指令
                                     wreg_o      <=  `WriteEnable;
                                     aluop_o     <=  `EXE_XOR_OP;

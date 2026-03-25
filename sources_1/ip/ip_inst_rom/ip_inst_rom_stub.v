@@ -1,10 +1,10 @@
 // Copyright 1986-2019 Xilinx, Inc. All Rights Reserved.
 // --------------------------------------------------------------------------------
 // Tool Version: Vivado v.2019.2 (win64) Build 2708876 Wed Nov  6 21:40:23 MST 2019
-// Date        : Mon Mar 23 00:09:09 2026
+// Date        : Mon Mar 23 00:09:08 2026
 // Host        : Xialing running 64-bit major release  (build 9200)
-// Command     : write_verilog -force -mode synth_stub
-//               c:/WorkSpace/Homework_Computer_System/CPU_DIY/CPU_DIY.srcs/sources_1/ip/ip_inst_rom/ip_inst_rom_stub.v
+// Command     : write_verilog -force -mode synth_stub -rename_top ip_inst_rom -prefix
+//               ip_inst_rom_ ip_inst_rom_stub.v
 // Design      : ip_inst_rom
 // Purpose     : Stub declaration of top-level module interface
 // Device      : xc7a100tcsg324-1
